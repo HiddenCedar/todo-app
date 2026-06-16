@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Do — Simple Todo App</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{
+      font-family:"Inter","system-ui",sans-serif;
+      background:linear-gradient(135deg,#0c0c0c,#1a1a2e);
+      color:#ececec;
+      min-height:100vh;
+      display:flex;align-items:center;justify-content:center;
+      padding:1rem;
+    }
+
+    .app{
+      width:100%;max-width:520px;
+      background:rgba(255,255,255,.03);
+      backdrop-filter:blur(20px);
+      -webkit-backdrop-filter:blur(20px);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:20px;
+      padding:2rem;
+    }
+
+    .app-header{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-bottom:1.5rem;
+    }
+    .app-header h1{
+      font-size:1.3rem;font-weight:700;letter-spacing:-.03em;
+    }
+    .app-header h1 span{color:#0a7e6c}
+    .app-header .count{
+      font-size:.75rem;color:#555;
+      background:rgba(255,255,255,.04);
+      padding:.3rem .8rem;border-radius:100px;
+    }
+
+    .add-form{
+      display:flex;gap:.5rem;margin-bottom:1.5rem;
+    }
+    .add-form input{
+      flex:1;
+      background:rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.06);
+      border-radius:10px;padding:.75rem 1rem;
+      color:#ececec;font-size:.9rem;outline:none;transition:.2s;
+    }
+    .add-form input::placeholder{color:#444}
+    .add-form input:focus{border-color:#0a7e6c66}
+    .add-form button{
+      width:44px;height:44px;border-radius:10px;
+      border:none;background:#0a7e6c;color:#0c0c0c;
+      font-size:1.3rem;font-weight:600;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:.2s;flex-shrink:0;
+    }
+    .add-form button:hover{opacity:.85}
+
+    .filters{
+      display:flex;gap:4px;margin-bottom:1.25rem;
+      background:rgba(255,255,255,.03);
+      border-radius:8px;padding:3px;
+    }
+    .filters button{
+      flex:1;padding:.5rem;
+      border:none;border-radius:6px;
+      background:transparent;color:#555;
+      font-size:.75rem;font-weight:500;cursor:pointer;
+      transition:.2s;
+    }
+    .filters button:hover{color:#888}
+    .filters button.active{
+      background:rgba(255,255,255,.06);color:#ececec;
+    }
+
+    .todo-list{
+      display:flex;flex-direction:column;gap:6px;
+    }
+    .todo-item{
+      display:flex;align-items:center;gap:.75rem;
+      padding:.6rem .75rem;
+      border-radius:10px;
+      background:rgba(255,255,255,.02);
+      border:1px solid rgba(255,255,255,.04);
+      transition:.2s;
+    }
+    .todo-item:hover{background:rgba(255,255,255,.04)}
+    .todo-item .check{
+      width:20px;height:20px;border-radius:6px;
+      border:2px solid #333;
+      background:transparent;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:.2s;flex-shrink:0;
+    }
+    .todo-item .check.done{
+      background:#0a7e6c;border-color:#0a7e6c;
+    }
+    .todo-item .check.done::after{
+      content:'✓';font-size:.6rem;color:#0c0c0c;font-weight:700;
+    }
+    .todo-item .text{
+      flex:1;font-size:.85rem;
+      transition:.2s;
+    }
+    .todo-item .text.done{
+      text-decoration:line-through;color:#444;
+    }
+    .todo-item .delete{
+      width:28px;height:28px;border-radius:6px;
+      border:none;background:transparent;
+      color:#444;font-size:.85rem;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      transition:.2s;flex-shrink:0;opacity:0;
+    }
+    .todo-item:hover .delete{opacity:1}
+    .todo-item .delete:hover{color:#ef4444;background:#ef444422}
+
+    .empty{
+      text-align:center;padding:2rem 0;color:#333;font-size:.8rem;
+    }
+    .clear-btn{
+      margin-top:1rem;width:100%;
+      padding:.6rem;border-radius:8px;
+      border:1px solid rgba(255,255,255,.06);
+      background:transparent;color:#555;
+      font-size:.75rem;cursor:pointer;transition:.2s;
+    }
+    .clear-btn:hover{color:#ef4444;border-color:#ef444433}
+
+    .footer-text{
+      text-align:center;margin-top:1.5rem;
+      font-size:.65rem;color:#333;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="app-header">
+      <h1>◈ <span>Do</span></h1>
+      <span class="count" id="count">0 items</span>
+    </div>
+
+    <form class="add-form" id="addForm">
+      <input type="text" id="todoInput" placeholder="Add a todo..." autofocus />
+      <button type="submit">+</button>
+    </form>
+
+    <div class="filters" id="filters">
+      <button class="active" data-filter="all">All</button>
+      <button data-filter="active">Active</button>
+      <button data-filter="done">Done</button>
+    </div>
+
+    <div class="todo-list" id="todoList"></div>
+
+    <button class="clear-btn" id="clearBtn">Clear completed</button>
+    <div class="footer-text">Data saves automatically ✦ close & come back</div>
+  </div>
+
+  <script>
+    // ─── State ───
+    let todos = JSON.parse(localStorage.getItem('todos') || '[]')
+    let filter = 'all'
+
+    // ─── DOM refs ───
+    const todoList = document.getElementById('todoList')
+    const addForm = document.getElementById('addForm')
+    const todoInput = document.getElementById('todoInput')
+    const countEl = document.getElementById('count')
+    const filterBtns = document.querySelectorAll('.filters button')
+    const clearBtn = document.getElementById('clearBtn')
+
+    // ─── Save ───
+    function save(){
+      localStorage.setItem('todos', JSON.stringify(todos))
+    }
+
+    // ─── Render ───
+    function render(){
+      const filtered = todos.filter(t => {
+        if(filter === 'active') return !t.done
+        if(filter === 'done') return t.done
+        return true
+      })
+
+      const activeCount = todos.filter(t => !t.done).length
+      countEl.textContent = `${activeCount} item${activeCount !== 1 ? 's' : ''}`
+
+      if(filtered.length === 0){
+        todoList.innerHTML = `<div class="empty">${filter === 'all' ? 'No todos yet. Add one above!' : filter === 'active' ? 'All done! 🎉' : 'No completed todos.'}</div>`
+        return
+      }
+
+      todoList.innerHTML = filtered.map(t => `
+        <div class="todo-item" data-id="${t.id}">
+          <div class="check ${t.done ? 'done' : ''}" data-action="toggle"></div>
+          <span class="text ${t.done ? 'done' : ''}">${escapeHtml(t.text)}</span>
+          <button class="delete" data-action="delete">✕</button>
+        </div>
+      `).join('')
+    }
+
+    function escapeHtml(str){
+      const d = document.createElement('div')
+      d.textContent = str
+      return d.innerHTML
+    }
+
+    // ─── Add ───
+    addForm.addEventListener('submit', e => {
+      e.preventDefault()
+      const text = todoInput.value.trim()
+      if(!text) return
+      todos.push({ id: Date.now(), text, done: false })
+      save(); render()
+      todoInput.value = ''
+      todoInput.focus()
+    })
+
+    // ─── Click handler (toggle + delete) ───
+    todoList.addEventListener('click', e => {
+      const item = e.target.closest('.todo-item')
+      if(!item) return
+      const id = Number(item.dataset.id)
+      const action = e.target.dataset.action
+
+      if(action === 'toggle'){
+        const t = todos.find(t => t.id === id)
+        if(t){ t.done = !t.done; save(); render() }
+      }
+
+      if(action === 'delete'){
+        todos = todos.filter(t => t.id !== id)
+        save(); render()
+      }
+    })
+
+    // ─── Filters ───
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'))
+        btn.classList.add('active')
+        filter = btn.dataset.filter
+        render()
+      })
+    })
+
+    // ─── Clear completed ───
+    clearBtn.addEventListener('click', () => {
+      todos = todos.filter(t => !t.done)
+      save(); render()
+    })
+
+    // ─── Initial render ───
+    render()
+  </script>
+</body>
+</html>
